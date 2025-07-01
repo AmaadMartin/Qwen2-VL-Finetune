@@ -13,10 +13,8 @@ This repository contains a script for training [Qwen2-VL](https://huggingface.co
 
 ## Update
 
-- [2025/05/29] 🔥Supports GRPO training.
-- [2025/04/16] 🔥Supports DPO training.
 - [2025/03/04] Add Option for using liger kernel.
-- [2025/02/18] 🔥Supports mixed-modality dataset with zero3.
+- [2025/02/18] 🔥Support mixed-modality dataset with zero3.
 - [2025/02/05] Fixed code for properly use image.
 - [2025/02/03] Support Liger-kernel for Qwen2.5-VL.
 - [2025/02/03] 🔥Supports Qwen2.5-VL.
@@ -39,20 +37,18 @@ This repository contains a script for training [Qwen2-VL](https://huggingface.co
   - [Docker](#docker)
   - [Installation](#installation)
     - [Environments](#environments)
-    - [Using `requirements.txt`](#using-requirementstxt)
     - [Using `environment.yaml`](#using-environmentyaml)
   - [Dataset Preparation](#dataset-preparation)
-  - [Supervised Fine Tuning](#supervised-fine-tuning)
+  - [Training](#training)
     - [Full Finetuning](#full-finetuning)
+    - [Full Finetuning with 8-bit](#full-finetuning-with-8-bit)
     - [Finetune with LoRA](#finetune-with-lora)
     - [Train with video dataset](#train-with-video-dataset)
-      - [Image Resolution for vram usage](#image-resolution-for-vram-usage)
       - [Merge LoRA Weights](#merge-lora-weights)
-  - [DPO Finetuning](#dpo-finetuning)
-  - [GRPO Finetuning](#grpo-finetuning)
+      - [Image Resolution for performance boost](#image-resolution-for-performance-boost)
+      - [Issue for libcudnn error](#issue-for-libcudnn-error)
   - [Inference](#inference)
     - [Gradio Infernce (WebUI)](#gradio-infernce-webui)
-  - [Issue for libcudnn error](#issue-for-libcudnn-error)
   - [TODO](#todo)
   - [Known Issues](#known-issues)
   - [License](#license)
@@ -68,9 +64,6 @@ This repository contains a script for training [Qwen2-VL](https://huggingface.co
 - Disable/enable Flash Attention 2
 - Multi-image and video training
 - Training optimized with liger kernel
-- Mixed-modality dataset
-- Direct Preference Optimization (DPO)
-- Group Relative Policy Optimization (GRPO)
 
 ## Docker
 
@@ -79,8 +72,8 @@ The settings are done in the conda env named `train`.<br><br>
 You could find more information about the image [here](https://hub.docker.com/repository/docker/john119/vlm/general).
 
 ```
-docker pull john119/vlm
-docker run --gpus all -it -v /host/path:/docker/path --name vlm --ipc=host john119/vlm /bin/bash
+docker pull john119/vlm:v1
+docker run --gpus all -it -v /host/path:/docker/path --name vlm --ipc=host john119/vlm:v1 /bin/bash
 ```
 
 ## Installation
@@ -93,19 +86,11 @@ docker run --gpus all -it -v /host/path:/docker/path --name vlm --ipc=host john1
 
 Install the required packages using `environment.yaml`.
 
-### Using `requirements.txt`
-
-```bash
-pip install -r requirements.txt -f https://download.pytorch.org/whl/cu124
-pip install qwen-vl-utils
-pip install flash-attn --no-build-isolation
-```
-
 ### Using `environment.yaml`
 
 ```bash
 conda env create -f environment.yaml
-conda activate train
+conda activate qwen2
 pip install qwen-vl-utils
 pip install flash-attn --no-build-isolation
 ```
@@ -209,64 +194,11 @@ The script requires a dataset formatted according to the LLaVA specification. Th
 ```
 
 </details>
-
-<details>
-<summary>Example for DPO dataet</summary>
-
-```json
-[
-  {
-    "id": "e4cd017f-3854-4019-9cc1-9dacacb5d424",
-    "image": "example_0_0.png",
-    "prompt": "<image>\nDescribe the key features of the image in great detail.",
-    "chosen": "The image features a modern, multi-colored train parked on a train track, occupying a significant portion of the scene. The train has a unique and striking design, with red, white, and blue colors, as well as yellow accents. It appears to be a high-speed train, indicating its advanced engineering and potential for fast travel.\n\nThe train is situated next to a platform, suggesting that it may be at a train station. The overall scene conveys a sense of transportation and modern technology, with the vibrant and sleek train as the main subject.",
-    "rejected": "The image features a modern, colorful train parked on a set of train tracks. The train has a striking design, with red, white, and blue colors as well as yellow accents. It appears to be a high-speed train, ready for departure.\n\nThe train spans a significant portion of the image, from the left to the right side. The train tracks can be seen clearly beneath the train, emphasizing its position on the railway line. The overall scene gives off an impression of a contemporary and efficient mode of transportation."
-  },
-  {
-    "id": "5e19e647-e5d3-4bcf-82e9-d262570743ae",
-    "image": "example_1_0.png",
-    "prompt": "<image>\nIs this bus in the USA?",
-    "chosen": "Yes, based on the image, it can be assumed that this bus is in the USA. The location of the bus cannot be accurately determined.",
-    "rejected": "No, it's not in the USA. The image does not provide specific information on where the bus is located. However, we can say that it's not in the United States."
-  }
-  ...
-]
-```
-
-</details>
-
-<details>
-<summary>Example for GRPO dataset</summary>
-
-```json
-[
-  {
-    "id": "06bc8a17-bb1c-4007-8c08-92c41e2628b2",
-    "image": "image_2.jpg",
-    "conversations": [
-      {
-        "from": "human",
-        "value": "Based on the image, which geometric method is used to determine the bearing angle, and why is it the most appropriate choice?"
-      },
-      {
-        "from": "gpt",
-        "value": "<think>Let's analyze the image step-by-step. The image shows a right-angled triangle with points B, C, and A. The angle at point B is a right angle, indicating that trigonometric functions can be applied. To find the bearing angle, we need to relate the sides of the triangle. The tangent function is suitable here because it relates the opposite side (BC) to the adjacent side (AB) in a right-angled triangle. By using the tangent function, we can calculate the angle at point A, which is the bearing angle. Therefore, the most appropriate geometric method is the use of trigonometric functions.</think>\n\n<answer>A</answer>"
-      }
-    ]
-  }
-  ...
-]
-```
-
-**Note:** You should remove all `<image>` and `<video>` tokens in your dataset. It works a bit different with other training methods.
-
-</details>
-
 <br><br>
 
 Adding the new domain-specific data on top of the general data from open-source data will enhance downstream capabilities while retaining the foundational skills. Of course, you can also choose to fine-tune solely on the new data based on your requirements.
 
-## Supervised Fine Tuning
+## Training
 
 **Note:** Deepspeed zero2 is faster than zero3, however it consumes more memory. Also, most of the time zero2 is more stable than zero3.<br><br>
 **Tip:** You could use `adamw_bnb_8bit` for optimizer to save memory.
@@ -278,6 +210,16 @@ To run the training script, use the following command:
 ```bash
 bash scripts/finetune.sh
 ```
+
+### Full Finetuning with 8-bit
+
+```bash
+bash scripts/finetune_8bit.sh
+```
+
+**You need to install [ms-amp](https://github.com/Azure/MS-AMP) to use this script.**<br>
+This script will finetune the model with fp8 model dtype. If you run out of vram, you could use this.<br>
+You can even use offloading with fp8 training. For detailed config, you could change the deepspeed config files.
 
 ### Finetune with LoRA
 
@@ -310,7 +252,7 @@ bash scripts/finetune_lora_vision.sh
 - `--gradient_accumulation_steps` (int): Gradient accumulation steps (default: 4).
 - `--freeze_vision_tower` (bool): Option to freeze vision_model (default: False).
 - `--freeze_llm` (bool): Option to freeze LLM (default: False).
-- `--freeze_merger` (bool): Option to tune projector (default: False).
+- `--tune_merger` (bool): Option to tune projector (default: True).
 - `--num_lora_modules` (int): Number of target modules to add LoRA (-1 means all layers).
 - `--vision_lr` (float): Learning rate for vision_model.
 - `--merger_lr` (float): Learning rate for merger(projector).
@@ -339,9 +281,6 @@ bash scripts/finetune_lora_vision.sh
 - `--lora_dropout` (float): LoRA dropout (default: 0.05).
 - `--logging_steps` (int): Logging steps (default: 1).
 - `--dataloader_num_workers` (int): Number of data loader workers (default: 4).
-- `--dpo_loss` (str): Loss type for dpo. (default: 'sigmoid')
-- `--precompute_ref_log_probs` (bool): Wheter to precompute the reference log probs (default: False)
-- `--beta` (float): The beta value for DPO (default: 0.1)
 
 **Note:** The learning rate of `vision_model` should be 10x ~ 5x smaller than the `language_model`.
 
@@ -360,7 +299,15 @@ bash scripts/finetune_video.sh
 If you run out of vram, you can use [zero3_offload](./scripts/zero3_offload.json) instead of [zero3](./scripts/zero3_offload.json).<br>
 You could use [zero2_offload](./scripts/zero2_offload.json) for a bit faster training.
 
-#### Image Resolution for vram usage
+#### Merge LoRA Weights
+
+```
+bash scripts/merge_lora.sh
+```
+
+**Note:** Remember to replace the paths in `finetune.sh` or `finetune_lora.sh` with your specific paths. (Also in `merge_lora.sh` when using LoRA.)
+
+#### Image Resolution for performance boost
 
 The model supprots a wide range of resolution inputs. By default, it uses the native resolution for input.
 For better performance using native or higer pixel numbers are recommended, however it takes too much memory and computation time for large images. So you could adjust the pixel numbers for it.
@@ -383,71 +330,14 @@ Besides you could directly set the image/video height and width to control over 
 
 These values will be rounded to the nearest multiple of 28.
 
-#### Merge LoRA Weights
+#### Issue for libcudnn error
 
 ```
-bash scripts/merge_lora.sh
+Could not load library libcudnn_cnn_train.so.8. Error: /usr/local/cuda-12.1/lib/libcudnn_cnn_train.so.8: undefined symbol: _ZN5cudnn3cnn34layerNormFwd_execute_internal_implERKNS_7backend11VariantPackEP11CUstream_stRNS0_18LayerNormFwdParamsERKNS1_20NormForwardOperationEmb, version libcudnn_cnn_infer.so.8
 ```
 
-**Note:** Remember to replace the paths in `finetune.sh` or `finetune_lora.sh` with your specific paths. (Also in `merge_lora.sh` when using LoRA.)
-
-## DPO Finetuning
-
-You can train the model using Direct Preference Optimization (DPO).<br>
-The process is quite similar to Supervised Fine-Tuning (SFT), and you can also apply LoRA during DPO training just like in SFT.
-
-```bash
-bash scripts/finetune_dpo.sh
-```
-
-Most of the training arugments are same as SFT, but few other arguments are added for DPO training.
-
-<details>
-<summary>Training arguments</summary>
-
-- `--dpo_loss` (str): Loss type for dpo. (default: 'sigmoid')
-- `--precompute_ref_log_probs` (bool): Wheter to precompute the reference log probs (default: False)
-- `--beta` (float): The beta value for DPO (default: 0.1)
-
-</details>
-
-## GRPO Finetuning
-
-You can traing the model using Group Relative Policy Optimization (GRPO) <br>
-The process is quite similar to Supervised Fine-Tuning (SFT), and you can also apply LoRA during GRPO training just like in SFT.<br>
-<br>
-
-### Prerequisites
-
-| What                      | Where                       | Notes                                                                                       |
-| ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------- |
-| **Reward functions**      | `src/train/reward_funcs.py` | Add any function that ends with `_reward`. The training script picks them up automatically. |
-| **Custom system prompts** | `src/constants.py`          | Append your own prompt strings here.                                                        |
-
-You could start training using this script.<br>
-Before training, **Please check the dataset format once more.** The format is a bit different from other training methods.
-
-```bash
-bash scripts/finetune_grpo.sh
-```
-
-Most of the training arugments are same as SFT, but few other arguments are added for GRPO training.
-
-<details>
-<summary>Training arguments</summary>
-
-- `--temperature` (float): Generation config (default: 0.9)
-- `--top_p` (float): Generation config (default: 1.0)
-- `--top_k` (int): Generation config (default: 50)
-- `--min_p` (float): Generation config (default: None)
-- `--repetition_penalty` (float): Generation config (default: 1.0)
-- `--max_completion_length` (int): Max length for the completion (default: 256)
-- `--max_prompt_length` (int): Max length for the prompt (default: 512)
-- `--beta` (float): KL Coefficient. (default: 0.04)
-
-</details>
-
-**Note:** **Liger GRPO loss** and **vLLM back-end** are not yet supported. Both will be added soon.
+You could run `unset LD_LIBRARY_PATH` for this error.
+You could see this [issue](https://github.com/andimarafioti/florence2-finetuning/issues/2)
 
 ## Inference
 
@@ -470,15 +360,6 @@ python -m src.serve.app \
 
 You can launch gradio based demo with this command. This can also set some other generation configs like `repetition_penalty`, `temperature` etc.
 
-## Issue for libcudnn error
-
-```
-Could not load library libcudnn_cnn_train.so.8. Error: /usr/local/cuda-12.1/lib/libcudnn_cnn_train.so.8: undefined symbol: _ZN5cudnn3cnn34layerNormFwd_execute_internal_implERKNS_7backend11VariantPackEP11CUstream_stRNS0_18LayerNormFwdParamsERKNS1_20NormForwardOperationEmb, version libcudnn_cnn_infer.so.8
-```
-
-You could run `unset LD_LIBRARY_PATH` for this error.
-You could see this [issue](https://github.com/andimarafioti/florence2-finetuning/issues/2)
-
 ## TODO
 
 - [x] Support for video data
@@ -487,9 +368,8 @@ You could see this [issue](https://github.com/andimarafioti/florence2-finetuning
 - [x] Support Qwen2.5-VL
 - [x] Monkey-patch liger-kernel for Qwen2.5-VL
 - [x] Update the code base to the latest transformers.
-- [x] Add DPO
-- [x] Add GRPO
-- [ ] Fix GRPO liger loss to work
+- [ ] Add DPO
+- [ ] Add GRPO
 
 ## Known Issues
 
@@ -521,4 +401,3 @@ This project is based on
 - [Mipha](https://github.com/zhuyiche/llava-phi): Open-source projcet of SMM with amazing capabilites.
 - [Qwen2-VL-7B-Instruct](https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct): Awesome pretrained MLLM based on Qwen2.
 - [Liger-Kernel](https://github.com/linkedin/Liger-Kernel): Collection of Tirton kernels designed specifically for LLM training.
-- [VLM-R1](https://github.com/om-ai-lab/VLM-R1): Open-source project of Reinforcement Learning with VLMs.

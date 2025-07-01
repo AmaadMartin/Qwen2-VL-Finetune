@@ -13,7 +13,7 @@ GRAD_ACCUM_STEPS=$((GLOBAL_BATCH_SIZE / (BATCH_PER_DEVICE * NUM_DEVICES)))
 
 export PYTHONPATH=src:$PYTHONPATH
 
-deepspeed src/train/train_sft.py \
+deepspeed src/training/train.py \
     --use_liger True \
     --deepspeed scripts/zero3_offload.json \
     --model_id $MODEL_NAME \
@@ -22,11 +22,11 @@ deepspeed src/train/train_sft.py \
     --remove_unused_columns False \
     --freeze_vision_tower False \
     --freeze_llm False \
-    --freeze_merger False \
+    --tune_merger True \
     --bf16 True \
     --fp16 False \
     --disable_flash_attn2 False \
-    --output_dir output/test_fft \
+    --output_dir output/fft_0912 \
     --num_train_epochs 1 \
     --per_device_train_batch_size $BATCH_PER_DEVICE \
     --gradient_accumulation_steps $GRAD_ACCUM_STEPS \

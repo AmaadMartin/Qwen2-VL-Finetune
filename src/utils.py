@@ -4,10 +4,6 @@ from transformers import BitsAndBytesConfig, Qwen2VLForConditionalGeneration, Au
 import warnings
 import os
 import json
-import importlib
-import inspect
-from types import ModuleType
-from typing import Callable, List
 
 def disable_torch_init():
     """
@@ -75,7 +71,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         with open(os.path.join(model_path, 'config.json'), 'r') as f:
             config = json.load(f)
 
-        if "Qwen2_5" in config["architectures"][0]:
+        if "Qwen2_5" in config["architectures"]:
             processor = AutoProcessor.from_pretrained(model_path)
             model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
@@ -93,22 +89,3 @@ def get_model_name_from_path(model_path):
         return model_paths[-2] + "_" + model_paths[-1]
     else:
         return model_paths[-1]
-    
-def load_reward_funcs(
-    module_path: str = "train.reward_funcs",
-    *,
-    name_pred = lambda n: n.endswith("_reward"),
-    obj_pred  = lambda o: callable(o),
-    keep_order: bool = True
-) -> List[Callable]:
-
-    mod: ModuleType = importlib.import_module(module_path)
-    
-    members = inspect.getmembers(mod, predicate=obj_pred)
-
-    reward_funcs = [(n, o) for n, o in members if name_pred(n)]
-
-    if keep_order:
-        reward_funcs.sort(key=lambda pair: inspect.getsourcelines(pair[1])[1])
-
-    return [o for _, o in reward_funcs]
